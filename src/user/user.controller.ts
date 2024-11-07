@@ -38,8 +38,18 @@ export class UserController {
    * GET http://localhost:3000/user
    */
   @Get()
-  findAll() {
-    return this.userService.findAllUser();
+  async findAll() {
+    const users = await this.userService.findAllUser(); // Assuming this returns an array of users
+    return {
+      success: true,
+      message: 'Users retrieved successfully',
+      data: users, // Array of users
+      pagination: {
+        total: users.length,
+        page: 1, // Example page number
+        limit: 10, // Example items per page
+      },
+    };
   }
 
   /**

@@ -3,21 +3,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
-import { User } from './user/entities/user.entity';
+import { ConfigModule } from '@nestjs/config';
+import { databaseConfig } from './config/db.config';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      password: 'Thien@123',
-      username: 'cristthien',
-      entities: [User],
-      database: 'amazingdb',
-      synchronize: true,
-      logging: true,
+    ConfigModule.forRoot({
+      isGlobal: true,
     }),
+    TypeOrmModule.forRootAsync({
+      useFactory: databaseConfig,
+    }),
+
     UserModule,
   ],
   controllers: [AppController],
