@@ -1,0 +1,32 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src/app          # Đồng bộ mã nguồn trên máy với container
+      - /usr/src/app/node_modules  # Giữ thư mục node_modules trong container riêng biệt
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=cristthien
+      - DATABASE_PASSWORD=Thien@123
+      - DATABASE_NAME=amazingdb
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: cristthien
+      POSTGRES_PASSWORD: Thien@123
+      POSTGRES_DB: amazingdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
