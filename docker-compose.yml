@@ -4,12 +4,12 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - .:/usr/src/app          # Đồng bộ mã nguồn trên máy với container
-      - /usr/src/app/node_modules  # Giữ thư mục node_modules trong container riêng biệt
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_HOST=postgres
+      - DATABASE_HOST=postgres  # Use the service name here
       - DATABASE_PORT=5432
       - DATABASE_USER=cristthien
       - DATABASE_PASSWORD=Thien@123
