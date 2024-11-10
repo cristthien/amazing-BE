@@ -7,10 +7,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import CreateUserDto from './dto/create-user.dto';
-import UpdateUserDto from './dto/update-user.dto';
 import { ConflictException } from '@nestjs/common';
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
 import { HashPasswordHelper } from 'src/common/helpers/utils';
+import { paginate } from '../common/helpers/pagination.util';
+import UpdateUserDto from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -41,23 +42,16 @@ export class UserService {
 
     return this.userRepository.save(user);
   }
-  // Get all users
+
   async findAll(
     page: number = 1,
     limit: number = 10,
   ): Promise<PaginatedResult<User>> {
-    // Tính toán offset (vị trí bắt đầu)
-    const [data, total] = await this.userRepository.findAndCount({
-      take: limit, // Số lượng bản ghi mỗi trang
-      skip: (page - 1) * limit, // Tính toán bắt đầu từ trang nào
-    });
-
-    return {
-      data,
-      total,
-      currentPage: page,
-      totalPages: Math.ceil(total / limit), // Tính toán tổng số trang
-    };
+    return paginate<User>(
+      page,
+      limit,
+      this.userRepository.createQueryBuilder('user'),
+    );
   }
 
   // Get a user by ID
@@ -84,7 +78,7 @@ export class UserService {
     return user;
   }
 
-  // Update a user by ID
+  // // Update a user by ID
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     await this.userRepository.update(id, updateUserDto);
     return this.findOne(id); // Return the updated user

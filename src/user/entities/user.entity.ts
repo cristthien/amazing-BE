@@ -1,11 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
-
-// Define an enum for gender
-export enum Gender {
-  Male = 'M',
-  Female = 'F',
-  Other = 'O',
-}
+import { Gender, UserRole } from '@/src/common/enums';
 
 @Entity()
 export class User {
@@ -31,12 +25,17 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   phoneNumber: string;
 
-  @Column({ type: 'varchar', default: 'user' })
-  role: string;
+  // Role field using enum with default value 'user'
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.User })
+  role: UserRole;
 
   @Column({ type: 'varchar', nullable: true })
   googleId: string;
 
   @Column({ type: 'boolean', default: false })
   isEmailVerified: boolean;
+
+  // Avatar field, optional, can be a URL or file path
+  @Column({ type: 'varchar', nullable: true })
+  avatar: string; // Path or URL to the avatar image
 }

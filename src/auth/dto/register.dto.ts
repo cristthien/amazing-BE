@@ -7,7 +7,12 @@ import {
   Matches,
 } from 'class-validator';
 
-export class LoginDto {
+export class registerDto {
+  @IsString()
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
   @IsString()
   @IsNotEmpty()
   @MinLength(8, { message: 'Password must be at least 8 characters long' })
@@ -26,7 +31,7 @@ export class LoginDto {
   })
   password: string;
 
-  @IsEmail()
+  @IsString()
   @IsNotEmpty()
   @MinLength(3, { message: 'Username must be at least 3 characters long' })
   @MaxLength(20, { message: 'Username must be no longer than 20 characters' })

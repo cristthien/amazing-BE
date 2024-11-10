@@ -1,13 +1,5 @@
-// create a file named user.dto.ts in a 'dto' folder
-import {
-  IsString,
-  IsEmail,
-  IsOptional,
-  Length,
-  IsEnum,
-  IsBoolean,
-} from 'class-validator';
-import { Gender } from '../entities/user.entity';
+import { IsString, IsEmail, IsOptional, Length, IsEnum } from 'class-validator';
+import { UserRole } from '@/src/common/enums';
 
 export default class CreateUserDto {
   @IsString()
@@ -17,26 +9,10 @@ export default class CreateUserDto {
   email: string;
 
   @IsString()
+  @Length(8, 20) // Giới hạn độ dài mật khẩu cho an toàn
   password: string;
 
   @IsOptional()
-  @IsEnum(Gender)
-  gender?: Gender;
-
-  @IsOptional()
-  @IsString()
-  address?: string;
-
-  @IsOptional()
-  @IsString()
-  phoneNumber?: string;
-
-  @IsOptional()
-  @IsString()
-  @Length(4, 10)
-  role?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isEmailVerified?: boolean;
+  @IsEnum(UserRole)
+  role?: UserRole = UserRole.User; // Mặc định là 'user'
 }
