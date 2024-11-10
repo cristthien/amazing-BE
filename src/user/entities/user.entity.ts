@@ -1,33 +1,42 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+// Define an enum for gender
+export enum Gender {
+  Male = 'M',
+  Female = 'F',
+  Other = 'O',
+}
 
 @Entity()
 export class User {
-  /**
-   * this decorator will help to auto generate id for the table.
-   */
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 30 })
-  name: string;
-
-  @Column({ type: 'varchar', length: 15 })
+  @Column({ type: 'varchar', nullable: false })
   username: string;
 
-  @Column({ type: 'varchar', length: 40 })
+  @Column({ type: 'varchar', unique: true, nullable: false })
   email: string;
 
-  @Column({ type: 'int' })
-  age: number;
-
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', nullable: false })
   password: string;
 
-  @Column({ type: 'enum', enum: ['m', 'f', 'u'] })
-  /**
-   * m - male
-   * f - female
-   * u - unspecified
-   */
-  gender: string;
+  // Gender field using enum
+  @Column({ type: 'enum', enum: Gender, nullable: true })
+  gender: Gender;
+
+  @Column({ type: 'varchar', nullable: true })
+  address: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  phoneNumber: string;
+
+  @Column({ type: 'varchar', default: 'user' })
+  role: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  googleId: string;
+
+  @Column({ type: 'boolean', default: false })
+  isEmailVerified: boolean;
 }

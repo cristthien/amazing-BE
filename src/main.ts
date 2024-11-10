@@ -13,7 +13,7 @@ async function bootstrap() {
       'API documentation for Amazing Online Shop - a modern platform for purchasing the latest fashion and accessories. This API provides all necessary endpoints for managing products, users, orders, and more.',
     )
     .setVersion('1.0')
-    .addTag('users', 'Endpoints for user accounts')
+    .addTag('0 - Health', 'Endpoints for user accounts')
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
