@@ -2,83 +2,56 @@ import {
   Controller,
   Get,
   Post,
-  Body,
-  Patch,
-  Param,
+  Put,
   Delete,
+  Param,
+  Body,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './entities/user.entity';
+import CreateUserDto from './dto/create-user.dto';
+import UpdateUserDto from './dto/update-user.dto';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
-/**
- * whatever the string pass in controller decorator it will be appended to
- * API URL. to call any API from this controller you need to add prefix which is
- * passed in controller decorator.
- * in our case our base URL is http://localhost:3000/user
- */
-@Controller('user')
+@Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  /**
-   * Post decorator represents method of request as we have used post decorator the method
-   * of this API will be post.
-   * so the API URL to create User will be
-   * POST http://localhost:3000/user
-   */
+  // Create a new user
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.createUser(createUserDto);
+  async create(@Body() createUserDto: CreateUserDto): Promise<User> {
+    return await this.userService.create(createUserDto);
   }
 
-  /**
-   * we have used get decorator to get all the user's list
-   * so the API URL will be
-   * GET http://localhost:3000/user
-   */
+  // Get all users
   @Get()
-  async findAll() {
-    const users = await this.userService.findAllUser(); // Assuming this returns an array of users
-    return {
-      success: true,
-      message: 'Users retrieved successfully',
-      data: users, // Array of users
-      pagination: {
-        total: users.length,
-        page: 1, // Example page number
-        limit: 10, // Example items per page
-      },
-    };
+  async findAll(@Query() paginationDto: PaginationDto) {
+    // Lấy các tham số page và limit từ query string
+    const { page, limit } = paginationDto;
+
+    // Gọi phương thức findAll() từ service và truyền các tham số phân trang
+    return this.userService.findAll(page, limit);
   }
 
-  /**
-   * we have used get decorator with id param to get id from request
-   * so the API URL will be
-   * GET http://localhost:3000/user/:id
-   */
+  // Get a single user by ID
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.viewUser(+id);
+  async findOne(@Param('id') id: number): Promise<User> {
+    return await this.userService.findOne(id);
   }
 
-  /**
-   * we have used patch decorator with id param to get id from request
-   * so the API URL will be
-   * PATCH http://localhost:3000/user/:id
-   */
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.updateUser(+id, updateUserDto);
+  // Update a user by ID
+  @Put(':id')
+  async update(
+    @Param('id') id: number,
+    @Body() updateUserDto: UpdateUserDto,
+  ): Promise<User> {
+    return await this.userService.update(id, updateUserDto);
   }
 
-  /**
-   * we have used Delete decorator with id param to get id from request
-   * so the API URL will be
-   * DELETE http://localhost:3000/user/:id
-   */
+  // Delete a user by ID
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.removeUser(+id);
+  async remove(@Param('id') id: number): Promise<void> {
+    return await this.userService.remove(id);
   }
 }
