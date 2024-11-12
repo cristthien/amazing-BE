@@ -6,6 +6,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Category } from '@/src/categories/entities/category.entity';
+import { User } from '@/src/user/entities/user.entity';
 
 @Entity('auctions')
 export class Auction {
@@ -17,6 +18,9 @@ export class Auction {
 
   @Column({ type: 'text', nullable: true })
   description: string;
+
+  @Column({ type: 'text', nullable: true })
+  slug: string;
 
   @ManyToOne(() => Category, (category) => category.id, { nullable: false }) // Link to Category
   @JoinColumn({ name: 'category_id' }) // Thiết lập cột khóa ngoại
@@ -60,4 +64,8 @@ export class Auction {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updated_at: Date;
+
+  @ManyToOne(() => User, (user) => user.id, { nullable: false })
+  @JoinColumn({ name: 'userId' })
+  user: User;
 }
