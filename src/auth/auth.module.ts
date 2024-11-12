@@ -1,3 +1,4 @@
+import { JwtConfigService } from '@/src/config/jwt.config';
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -11,16 +12,12 @@ import { JwtStrategy } from './passport/jwt.strategy';
   imports: [
     UserModule,
     JwtModule.registerAsync({
-      useFactory: async () => ({
-        secret: '903deaac-5c0d-4411-9131-cd7277a570fb',
-        signOptions: {
-          expiresIn: '1000d',
-        },
-      }),
+      imports: [],
+      useClass: JwtConfigService,
     }),
     PassportModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [AuthService, LocalStrategy, JwtStrategy, JwtConfigService],
 })
 export class AuthModule {}

@@ -1,14 +1,15 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config'; // Import ConfigService
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: '903deaac-5c0d-4411-9131-cd7277a570fb', // Use the correct environment variable for the secret
+      secretOrKey: configService.get<string>('JWT_SECRET'), // Lấy giá trị từ biến môi trường
     });
   }
 
