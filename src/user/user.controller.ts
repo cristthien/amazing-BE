@@ -1,31 +1,29 @@
 import {
   Controller,
   Get,
-  Post,
-  Put,
   Delete,
   Param,
-  Body,
   Query,
+  UseGuards,
+  Body,
+  Put,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
-import CreateUserDto from './dto/create-user.dto';
-import UpdateUserDto from './dto/update-user.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { JwtAuthGuard } from '../auth/passport/jwt-auth.guard';
+import { RolesGuard } from '../auth/passport/roles.guard';
+import { Roles } from '../common/decorator/roles.decorator';
+import UpdateUserDto from './dto/update-user.dto';
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  // Create a new user
-  @Post()
-  async create(@Body() createUserDto: CreateUserDto): Promise<User> {
-    return await this.userService.create(createUserDto);
-  }
-
   // Get all users
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   async findAll(@Query() paginationDto: PaginationDto) {
     // Lấy các tham số page và limit từ query string
     const { page, limit } = paginationDto;
@@ -36,6 +34,8 @@ export class UserController {
 
   // Get a single user by ID
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   async findOne(@Param('id') id: number): Promise<User> {
     return await this.userService.findOne(id);
   }

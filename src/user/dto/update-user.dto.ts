@@ -2,13 +2,10 @@ import {
   IsString,
   IsEmail,
   IsOptional,
-  Length,
   IsEnum,
-  isBoolean,
   IsBoolean,
 } from 'class-validator';
-import { Gender } from '../entities/user.entity';
-
+import { Gender, UserRole } from '@/src/common/enums';
 export default class UpdateUserDto {
   @IsOptional()
   @IsString()
@@ -35,9 +32,8 @@ export default class UpdateUserDto {
   phoneNumber?: string;
 
   @IsOptional()
-  @IsString()
-  @Length(4, 10)
-  role?: string;
+  @IsEnum(UserRole) // Apply enum validation here
+  role?: UserRole;
 
   @IsOptional()
   @IsBoolean()

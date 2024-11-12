@@ -13,6 +13,19 @@ async function bootstrap() {
       'API documentation for Amazing Online Shop - a modern platform for purchasing the latest fashion and accessories. This API provides all necessary endpoints for managing products, users, orders, and more.',
     )
     .setVersion('1.0')
+    .addBearerAuth(
+      // Adds JWT Bearer authentication
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'Bearer',
+    )
+    .addSecurityRequirements('Bearer')
     .addTag('0 - Health', 'Endpoints for user accounts')
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
