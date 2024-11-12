@@ -45,4 +45,7 @@ export class AuctionCreateDto {
   @IsObject()
   @IsOptional() // Thông số kỹ thuật, optional
   specifications: object;
+
+  @IsNumber()
+  userId: number;
 }
