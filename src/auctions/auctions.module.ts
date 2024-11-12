@@ -9,5 +9,6 @@ import { Category } from '../categories/entities/category.entity'; // Import Cat
   imports: [TypeOrmModule.forFeature([Auction, Category])], // Đăng ký các entity với TypeOrmModule
   controllers: [AuctionsController],
   providers: [AuctionsService],
+  exports: [AuctionsService],
 })
 export class AuctionsModule {}

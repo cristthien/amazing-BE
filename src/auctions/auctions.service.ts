@@ -4,6 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Auction } from './entities/auction.entity';
 import { Category } from '../categories/entities/category.entity';
+import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
+import { paginate } from '../common/helpers/pagination.util';
 
 @Injectable()
 export class AuctionsService {
@@ -46,6 +48,19 @@ export class AuctionsService {
     return this.auctionRepository.save(auction);
   }
 
+  async getAuctionsByCategory(
+    categoryId: number,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<Auction>> {
+    // Create a query builder to filter by category and paginate the results
+    const queryBuilder = this.auctionRepository
+      .createQueryBuilder('auction')
+      .where('auction.category_id = :categoryId', { categoryId });
+
+    // Use the paginate utility function to apply pagination
+    return paginate<Auction>(page, limit, queryBuilder);
+  }
   findAll() {
     return `This action returns all auctions`;
   }

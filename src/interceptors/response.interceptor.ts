@@ -33,8 +33,8 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
         return new Observable((observer) => {
           observer.next({
             statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-            message: 'An unexpected error occurred',
-            error: 'Internal Server Error',
+            message: error.message || 'An unexpected error occurred',
+            error: error.name || 'UnknownError',
           });
           observer.complete();
         });
