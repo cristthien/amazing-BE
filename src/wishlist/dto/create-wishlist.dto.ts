@@ -1,12 +1,8 @@
 // src/wishlist/dto/create-wishlist.dto.ts
-import { IsInt, IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateWishlistDto {
-  @IsInt()
+  @IsString()
   @IsNotEmpty()
-  auctionId: number;
-
-  @IsInt()
-  @IsNotEmpty()
-  userId: number;
+  auctionSlug: string;
 }
