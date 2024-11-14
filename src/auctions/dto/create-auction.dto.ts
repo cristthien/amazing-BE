@@ -36,6 +36,7 @@ export class AuctionCreateDto {
   start_date: string;
 
   @IsDateString()
+  @IsNotEmpty()
   end_date: string;
 
   @IsNumber()

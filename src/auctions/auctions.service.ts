@@ -1,3 +1,4 @@
+import { InvoiceService } from './../invoice/invoice.service';
 import { AuctionCreateDto } from './dto/create-auction.dto';
 import {
   BadRequestException,
@@ -17,17 +18,21 @@ import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { User } from '../user/entities/user.entity';
 import deleteImages from '../common/helpers/delete-image.util';
 import UserPayload from '../common/dto/user-payload.dto';
-import { UserRole } from '../common/enums';
+import { AuctionStatus, UserRole } from '../common/enums';
+import { Bid } from '../bid/entities/bid.entity';
 
 @Injectable()
 export class AuctionsService {
   constructor(
     @InjectRepository(Auction)
     private readonly auctionRepository: Repository<Auction>,
+    @InjectRepository(Bid)
+    private readonly bidRepository: Repository<Bid>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>, // Inject Category repository
     @InjectRepository(User)
     private readonly userRepository: Repository<User>, // Inject Category repository
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   async createAuction(createAuctionDto: AuctionCreateDto): Promise<Auction> {
@@ -52,7 +57,7 @@ export class AuctionsService {
     } while (existingAuction); // If the auction with this slug exists, regenerate the slug
 
     // Ensure starting_bid is set to 0 if it's null or undefined
-    const startingBid = createAuctionDto.starting_bid ?? 0;
+    const startingBid = Number(createAuctionDto.starting_bid) ?? 0;
 
     // Create the auction object
     const category = await this.categoryRepository.findOne({
@@ -67,13 +72,32 @@ export class AuctionsService {
     if (!category) {
       throw new Error('Category not found');
     }
-    if (startingBid >= 0) {
+    if (startingBid <= 0) {
       throw new Error('Starting for Bid must be  positive');
     }
 
     if (!user) {
       throw new Error('User not found');
     }
+
+    // Validate start_date and end_date
+    const startDate = createAuctionDto.start_date
+      ? new Date(createAuctionDto.start_date)
+      : new Date();
+    const endDate = createAuctionDto.end_date
+      ? new Date(createAuctionDto.end_date)
+      : new Date();
+    if (startDate >= endDate) {
+      throw new Error('Start date must be before end date');
+    }
+    if (endDate <= new Date()) {
+      throw new Error('End date must be in the future');
+    }
+    // Set initial status based on date conditions
+    const status =
+      new Date() >= startDate && new Date() < endDate
+        ? AuctionStatus.ACTIVE
+        : AuctionStatus.PENDING;
 
     const auction = this.auctionRepository.create({
       name: createAuctionDto.name,
@@ -83,21 +107,19 @@ export class AuctionsService {
       price: createAuctionDto.price,
       highest_bid: startingBid,
       images: createAuctionDto.images,
-      start_date: createAuctionDto.start_date
-        ? new Date(createAuctionDto.start_date)
-        : new Date(),
-      end_date: createAuctionDto.end_date
-        ? new Date(createAuctionDto.end_date)
-        : new Date(),
+      start_date: startDate,
+      end_date: endDate,
       starting_bid: startingBid, // Set starting_bid to 0 if it's null or undefined
       specifications: createAuctionDto.specifications,
       slug: uniqueSlug, // Use the unique slug
       user: user,
+      status,
     });
 
     // Save the auction and return it
     return this.auctionRepository.save(auction);
   }
+
   async getAuctionsByCategory(
     categoryId: number,
     page: number,
@@ -237,5 +259,120 @@ export class AuctionsService {
   }
   remove(id: number) {
     return `This action removes a #${id} auction`;
+  }
+  async getHighestBid(slug: string) {
+    // Get the highest bid for the auction and include the User entity in the result
+    const highestBid = await this.bidRepository
+      .createQueryBuilder('bid')
+      .leftJoinAndSelect('bid.user', 'user') // Join with the user entity
+      .where('bid.auctionSlug = :slug', { slug })
+      .orderBy('bid.amount', 'DESC')
+      .getOne();
+
+    // Return only the amount and userId if a bid exists, otherwise null
+    return highestBid
+      ? { amount: highestBid.amount, userId: highestBid.user.id }
+      : null;
+  }
+  async getNearestEndDate() {
+    try {
+      // Truy vấn auction có end_date gần nhất với status là 'active'
+      const nearestAuction = await this.auctionRepository
+        .createQueryBuilder('auction')
+        .where('auction.status = :status', { status: AuctionStatus.ACTIVE })
+        .orderBy('auction.end_date', 'ASC')
+        .limit(1) // Giới hạn trả về 1 bản ghi duy nhất
+        .getOne(); // Trả về duy nhất 1 auction
+
+      if (!nearestAuction) {
+        return { end_date: null };
+      }
+      return {
+        target_time: nearestAuction.end_date,
+      };
+    } catch (error) {
+      console.error('Error fetching auctions:', error);
+      throw new Error('Could not fetch auctions');
+    }
+  }
+  async updateStatusByEndDate(endDate: Date) {
+    try {
+      // Fetch auctions to update
+      const auctionsToUpdate = await this.auctionRepository.find({
+        where: { end_date: endDate, status: AuctionStatus.ACTIVE },
+      });
+
+      if (auctionsToUpdate.length === 0) {
+        console.log('No active auctions found with the specified end date.');
+        return []; // Return an empty list if no auctions found
+      }
+
+      // Update the status of each auction and create invoices for the highest bid
+      const updatedAuctions = await Promise.all(
+        auctionsToUpdate.map(async (auction) => {
+          auction.status = AuctionStatus.CLOSED;
+
+          // Get the highest bid for this auction
+          const highestBid = await this.getHighestBid(auction.slug);
+
+          // If a highest bid is found, create an invoice
+          if (highestBid) {
+            await this.invoiceService.create(`${highestBid.userId}`, auction);
+          }
+
+          return auction;
+        }),
+      );
+
+      // Save the updated auctions
+      await this.auctionRepository.save(updatedAuctions);
+
+      console.log(`${updatedAuctions.length} auctions were updated.`);
+    } catch (error) {
+      console.error('Error updating auctions:', error);
+      throw new Error('Could not update auctions');
+    }
+  }
+
+  async getNearestStartDate() {
+    try {
+      // Truy vấn auction có end_date gần nhất với status là 'active'
+      const nearestAuction = await this.auctionRepository
+        .createQueryBuilder('auction')
+        .where('auction.status = :status', { status: AuctionStatus.PENDING })
+        .orderBy('auction.start_date', 'ASC')
+        .limit(1) // Giới hạn trả về 1 bản ghi duy nhất
+        .getOne(); // Trả về duy nhất 1 auction
+
+      if (!nearestAuction) {
+        return { start_date: null };
+      }
+      return {
+        target_time: nearestAuction.start_date,
+      };
+    } catch (error) {
+      console.error('Error fetching auctions:', error);
+      throw new Error('Could not fetch auctions');
+    }
+  }
+  async updateStatusByStartDate(startDate: Date) {
+    try {
+      // Cập nhật trạng thái cho tất cả các auction có end_date trùng với giá trị nhập vào
+      const updateResult = await this.auctionRepository
+        .createQueryBuilder()
+        .update(Auction)
+        .set({ status: AuctionStatus.ACTIVE }) // Cập nhật status thành 'closed'
+        .where('start_date = :startDate', { startDate })
+        .execute();
+
+      if (updateResult.affected === 0) {
+        console.log('No auctions found with the specified start date.');
+      } else {
+        console.log(`${updateResult.affected} auctions were updated.`);
+      }
+    } catch (error) {
+      console.error('Error updating auctions:', error);
+      throw new Error('Could not update auctions');
+    }
   }
 }

@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { Category } from '@/src/categories/entities/category.entity';
 import { User } from '@/src/user/entities/user.entity';
-
+import { AuctionStatus } from '@/src/common/enums';
 @Entity('auctions')
 export class Auction {
   @PrimaryGeneratedColumn()
@@ -68,4 +68,11 @@ export class Auction {
   @ManyToOne(() => User, (user) => user.id, { nullable: false })
   @JoinColumn({ name: 'userId' })
   user: User;
+
+  @Column({
+    type: 'enum',
+    enum: AuctionStatus,
+    default: AuctionStatus.PENDING, // Trạng thái mặc định là 'pending' (chuẩn bị bắt đầu)
+  })
+  status: AuctionStatus; // Trường status sử dụng enum
 }

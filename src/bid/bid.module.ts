@@ -16,5 +16,6 @@ import { AuctionsModule } from '../auctions/auctions.module';
   ], // Import Bid entity here
   controllers: [BidController],
   providers: [BidService, JwtAuthGuard, RolesGuard],
+  exports: [BidService],
 })
 export class BidModule {}
