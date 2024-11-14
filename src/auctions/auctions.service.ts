@@ -1,3 +1,4 @@
+import { AuctionTasksActiveService } from './tasks/auction-tasks-active.service';
 import { InvoiceService } from './../invoice/invoice.service';
 import { AuctionCreateDto } from './dto/create-auction.dto';
 import {
@@ -20,6 +21,7 @@ import deleteImages from '../common/helpers/delete-image.util';
 import UserPayload from '../common/dto/user-payload.dto';
 import { AuctionStatus, UserRole } from '../common/enums';
 import { Bid } from '../bid/entities/bid.entity';
+import { AuctionTasksService } from './tasks/auction-tasks.service';
 
 @Injectable()
 export class AuctionsService {
@@ -33,6 +35,8 @@ export class AuctionsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>, // Inject Category repository
     private readonly invoiceService: InvoiceService,
+    private readonly auctionTasksService: AuctionTasksService,
+    private readonly auctionTasksActiveService: AuctionTasksActiveService,
   ) {}
 
   async createAuction(createAuctionDto: AuctionCreateDto): Promise<Auction> {
@@ -115,9 +119,12 @@ export class AuctionsService {
       user: user,
       status,
     });
+    const newAuction = await this.auctionRepository.save(auction);
 
+    await this.auctionTasksActiveService.scheduleNextAuctionTask();
+    await this.auctionTasksService.scheduleNextAuctionTask();
     // Save the auction and return it
-    return this.auctionRepository.save(auction);
+    return newAuction;
   }
 
   async getAuctionsByCategory(
@@ -218,9 +225,13 @@ export class AuctionsService {
 
     // Cập nhật các trường dữ liệu còn lại từ DTO
     Object.assign(auction, updateAuctionDto);
+    const updatedAuction = await this.auctionRepository.save(auction);
+
+    await this.auctionTasksActiveService.scheduleNextAuctionTask();
+    await this.auctionTasksService.scheduleNextAuctionTask();
 
     // Lưu lại và trả về phiên đấu giá đã cập nhật
-    return this.auctionRepository.save(auction);
+    return updatedAuction;
   }
   async updateHighestBid(slug: string, highest_bid: number): Promise<Auction> {
     // Find the auction by slug
@@ -259,120 +270,5 @@ export class AuctionsService {
   }
   remove(id: number) {
     return `This action removes a #${id} auction`;
-  }
-  async getHighestBid(slug: string) {
-    // Get the highest bid for the auction and include the User entity in the result
-    const highestBid = await this.bidRepository
-      .createQueryBuilder('bid')
-      .leftJoinAndSelect('bid.user', 'user') // Join with the user entity
-      .where('bid.auctionSlug = :slug', { slug })
-      .orderBy('bid.amount', 'DESC')
-      .getOne();
-
-    // Return only the amount and userId if a bid exists, otherwise null
-    return highestBid
-      ? { amount: highestBid.amount, userId: highestBid.user.id }
-      : null;
-  }
-  async getNearestEndDate() {
-    try {
-      // Truy vấn auction có end_date gần nhất với status là 'active'
-      const nearestAuction = await this.auctionRepository
-        .createQueryBuilder('auction')
-        .where('auction.status = :status', { status: AuctionStatus.ACTIVE })
-        .orderBy('auction.end_date', 'ASC')
-        .limit(1) // Giới hạn trả về 1 bản ghi duy nhất
-        .getOne(); // Trả về duy nhất 1 auction
-
-      if (!nearestAuction) {
-        return { end_date: null };
-      }
-      return {
-        target_time: nearestAuction.end_date,
-      };
-    } catch (error) {
-      console.error('Error fetching auctions:', error);
-      throw new Error('Could not fetch auctions');
-    }
-  }
-  async updateStatusByEndDate(endDate: Date) {
-    try {
-      // Fetch auctions to update
-      const auctionsToUpdate = await this.auctionRepository.find({
-        where: { end_date: endDate, status: AuctionStatus.ACTIVE },
-      });
-
-      if (auctionsToUpdate.length === 0) {
-        console.log('No active auctions found with the specified end date.');
-        return []; // Return an empty list if no auctions found
-      }
-
-      // Update the status of each auction and create invoices for the highest bid
-      const updatedAuctions = await Promise.all(
-        auctionsToUpdate.map(async (auction) => {
-          auction.status = AuctionStatus.CLOSED;
-
-          // Get the highest bid for this auction
-          const highestBid = await this.getHighestBid(auction.slug);
-
-          // If a highest bid is found, create an invoice
-          if (highestBid) {
-            await this.invoiceService.create(`${highestBid.userId}`, auction);
-          }
-
-          return auction;
-        }),
-      );
-
-      // Save the updated auctions
-      await this.auctionRepository.save(updatedAuctions);
-
-      console.log(`${updatedAuctions.length} auctions were updated.`);
-    } catch (error) {
-      console.error('Error updating auctions:', error);
-      throw new Error('Could not update auctions');
-    }
-  }
-
-  async getNearestStartDate() {
-    try {
-      // Truy vấn auction có end_date gần nhất với status là 'active'
-      const nearestAuction = await this.auctionRepository
-        .createQueryBuilder('auction')
-        .where('auction.status = :status', { status: AuctionStatus.PENDING })
-        .orderBy('auction.start_date', 'ASC')
-        .limit(1) // Giới hạn trả về 1 bản ghi duy nhất
-        .getOne(); // Trả về duy nhất 1 auction
-
-      if (!nearestAuction) {
-        return { start_date: null };
-      }
-      return {
-        target_time: nearestAuction.start_date,
-      };
-    } catch (error) {
-      console.error('Error fetching auctions:', error);
-      throw new Error('Could not fetch auctions');
-    }
-  }
-  async updateStatusByStartDate(startDate: Date) {
-    try {
-      // Cập nhật trạng thái cho tất cả các auction có end_date trùng với giá trị nhập vào
-      const updateResult = await this.auctionRepository
-        .createQueryBuilder()
-        .update(Auction)
-        .set({ status: AuctionStatus.ACTIVE }) // Cập nhật status thành 'closed'
-        .where('start_date = :startDate', { startDate })
-        .execute();
-
-      if (updateResult.affected === 0) {
-        console.log('No auctions found with the specified start date.');
-      } else {
-        console.log(`${updateResult.affected} auctions were updated.`);
-      }
-    } catch (error) {
-      console.error('Error updating auctions:', error);
-      throw new Error('Could not update auctions');
-    }
   }
 }

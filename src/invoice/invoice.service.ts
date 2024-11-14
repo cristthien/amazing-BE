@@ -10,7 +10,18 @@ export class InvoiceService {
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
   ) {}
-  create(userID: string, auction: Auction) {
+  async create(userID: string, auction: Auction) {
+    // Kiểm tra nếu đã có invoice cho userID và auction
+    const existingInvoice = await this.invoiceRepository.findOne({
+      where: { userID, auction: { id: auction.id } },
+    });
+
+    // Nếu đã tồn tại, trả về invoice hiện có và không tạo mới
+    if (existingInvoice) {
+      return existingInvoice;
+    }
+
+    // Tạo invoice mới nếu chưa tồn tại
     const invoice = this.invoiceRepository.create({
       userID,
       auction,
@@ -18,6 +29,8 @@ export class InvoiceService {
       status: 'pending', // Default status for a new invoice
       createdAt: new Date(),
     });
+
+    // Lưu invoice mới vào database
     return this.invoiceRepository.save(invoice);
   }
 

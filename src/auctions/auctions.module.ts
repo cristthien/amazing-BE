@@ -9,9 +9,10 @@ import { RolesGuard } from '@/src/auth/passport/roles.guard';
 import { UserModule } from '@/src/user/user.module';
 import { User } from '@/src/user/entities/user.entity';
 import { AuctionTasksService } from './tasks/auction-tasks.service';
-import { AuctionTasksOpenService } from './tasks/auction-tasks-open.service';
+import { AuctionTasksActiveService } from './tasks/auction-tasks-active.service';
 import { InvoiceModule } from '../invoice/invoice.module';
 import { Bid } from '../bid/entities/bid.entity';
+import { AuctionCronService } from './tasks/cron-task.service';
 
 @Module({
   imports: [
@@ -24,8 +25,9 @@ import { Bid } from '../bid/entities/bid.entity';
     AuctionsService,
     JwtAuthGuard,
     RolesGuard,
+    AuctionCronService,
     AuctionTasksService,
-    AuctionTasksOpenService,
+    AuctionTasksActiveService,
   ],
   exports: [AuctionsService],
 })
