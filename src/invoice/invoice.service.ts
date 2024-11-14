@@ -1,8 +1,16 @@
 import { Auction } from '@/src/auctions/entities/auction.entity';
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Invoice } from './entities/invoice.entity';
 import { Repository } from 'typeorm';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import UserPayload from '../common/dto/user-payload.dto';
+import { paginate } from '../common/helpers/pagination.util';
+import { UserRole } from '../common/enums';
 
 @Injectable()
 export class InvoiceService {
@@ -33,20 +41,75 @@ export class InvoiceService {
     // Lưu invoice mới vào database
     return this.invoiceRepository.save(invoice);
   }
+  async findAll(user: UserPayload, page: number, limit: number) {
+    // Sử dụng QueryBuilder để tạo truy vấn với LEFT JOIN với Auction
+    const queryBuilder = this.invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.auction', 'auction') // Left Join với Auction
+      .where('invoice.userID = :userID', { userID: `${user.id}` });
 
-  findAll() {
-    return `This action returns all invoice`;
+    // Sử dụng hàm paginate để phân trang kết quả
+    return paginate(page, limit, queryBuilder);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} invoice`;
+  async findOne(id: number, user: UserPayload): Promise<Invoice> {
+    // Tìm hóa đơn với id
+    const invoice = await this.invoiceRepository
+      .createQueryBuilder('invoice') // 'invoice' là alias cho bảng Invoice
+      .leftJoinAndSelect('invoice.auction', 'auction') // Left join với bảng Auction
+      .where('invoice.id = :id', { id })
+      .getOne();
+
+    // Nếu không tìm thấy hóa đơn, ném lỗi NotFoundException
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found.');
+    }
+
+    // Kiểm tra nếu user không phải là admin và user.id không trùng với userID trong invoice
+    if (user.role !== UserRole.Admin && invoice.userID !== `${user.id}`) {
+      throw new ForbiddenException(
+        'You do not have permission to view this invoice.',
+      );
+    }
+
+    return invoice;
   }
 
-  // update(id: number, updateInvoiceDto: UpdateInvoiceDto) {
-  //   return `This action updates a #${id} invoice`;
-  // }
+  async update(
+    id: number,
+    updateInvoiceDto: UpdateInvoiceDto,
+    user: UserPayload,
+  ) {
+    // Tìm invoice theo id
+    const invoice = await this.invoiceRepository.findOne({ where: { id } });
 
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    // Kiểm tra quyền truy cập: user phải là người tạo invoice hoặc có role là 'admin'
+    if (invoice.userID !== `${user.id}` && user.role !== 'admin') {
+      throw new Error('You do not have permission to update this invoice');
+    }
+
+    // Cập nhật invoice với dữ liệu mới từ DTO
+    const updatedInvoice = Object.assign(invoice, updateInvoiceDto);
+
+    // Lưu lại invoice đã cập nhật
+    return this.invoiceRepository.save(updatedInvoice);
+  }
   remove(id: number) {
     return `This action removes a #${id} invoice`;
+  }
+  // Phương thức lấy tất cả các hóa đơn cho admin với phân trang
+  async findAllbyAdmin(page: number, limit: number) {
+    // Sử dụng query builder để tạo câu truy vấn với LEFT JOIN
+    const queryBuilder = this.invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.auction', 'auction') // Left Join với Auction
+      .orderBy('invoice.createdAt', 'DESC'); // Sắp xếp theo ngày tạo của invoice (mới nhất lên đầu)
+
+    // Sử dụng hàm paginate để thực hiện phân trang
+    return paginate(page, limit, queryBuilder);
   }
 }

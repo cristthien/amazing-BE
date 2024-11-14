@@ -12,3 +12,8 @@ export enum AuctionStatus {
   ACTIVE = 'active', // đang
   CLOSED = 'closed', // kết thúc
 }
+export enum PaymentMethod {
+  CASH = 'cash',
+  MOMO = 'momo',
+  BANK = 'bank',
+}

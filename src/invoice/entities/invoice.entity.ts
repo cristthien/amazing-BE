@@ -1,6 +1,5 @@
-import { User } from '@/src/user/entities/user.entity';
+import { PaymentMethod } from './../../common/enums/index';
 import { Auction } from '@/src/auctions/entities/auction.entity';
-// src/invoice/invoice.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 
 @Entity()
@@ -10,9 +9,6 @@ export class Invoice {
 
   @Column()
   userID: string;
-
-  @ManyToOne(() => User, (user) => user.id)
-  user: User;
 
   @ManyToOne(() => Auction, (auction) => auction.id)
   auction: Auction;
@@ -29,10 +25,13 @@ export class Invoice {
   @Column({ nullable: true })
   paidAt: Date;
 
-  @Column({ nullable: true })
-  paymentMethod: string; // E.g. 'credit card', 'paypal', etc.
+  @Column({
+    type: 'enum',
+    enum: PaymentMethod, // Chỉ định type là enum và gắn enum đã định nghĩa
+    nullable: true, // Cho phép null
+  })
+  paymentMethod: PaymentMethod | null; // Có thể null
 
-  // Thêm thông tin địa chỉ và số điện thoại
   @Column({ nullable: true })
   address: string;
 
