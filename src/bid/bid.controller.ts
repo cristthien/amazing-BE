@@ -32,4 +32,8 @@ export class BidController {
     // Default to 10 items per page) {
     return this.bidService.findAll(slug, +page, +limit);
   }
+  @Get('/test/:slug')
+  gehighestbid(@Param('slug') slug: string) {
+    return this.bidService.getHighestBid(slug);
+  }
 }

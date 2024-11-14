@@ -1,3 +1,5 @@
+import { AuctionTasksActiveService } from './tasks/auction-tasks-active.service';
+import { InvoiceService } from './../invoice/invoice.service';
 import { AuctionCreateDto } from './dto/create-auction.dto';
 import {
   BadRequestException,
@@ -17,17 +19,24 @@ import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { User } from '../user/entities/user.entity';
 import deleteImages from '../common/helpers/delete-image.util';
 import UserPayload from '../common/dto/user-payload.dto';
-import { UserRole } from '../common/enums';
+import { AuctionStatus, UserRole } from '../common/enums';
+import { Bid } from '../bid/entities/bid.entity';
+import { AuctionTasksService } from './tasks/auction-tasks.service';
 
 @Injectable()
 export class AuctionsService {
   constructor(
     @InjectRepository(Auction)
     private readonly auctionRepository: Repository<Auction>,
+    @InjectRepository(Bid)
+    private readonly bidRepository: Repository<Bid>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>, // Inject Category repository
     @InjectRepository(User)
     private readonly userRepository: Repository<User>, // Inject Category repository
+    private readonly invoiceService: InvoiceService,
+    private readonly auctionTasksService: AuctionTasksService,
+    private readonly auctionTasksActiveService: AuctionTasksActiveService,
   ) {}
 
   async createAuction(createAuctionDto: AuctionCreateDto): Promise<Auction> {
@@ -52,7 +61,7 @@ export class AuctionsService {
     } while (existingAuction); // If the auction with this slug exists, regenerate the slug
 
     // Ensure starting_bid is set to 0 if it's null or undefined
-    const startingBid = createAuctionDto.starting_bid ?? 0;
+    const startingBid = Number(createAuctionDto.starting_bid) ?? 0;
 
     // Create the auction object
     const category = await this.categoryRepository.findOne({
@@ -67,13 +76,32 @@ export class AuctionsService {
     if (!category) {
       throw new Error('Category not found');
     }
-    if (startingBid >= 0) {
+    if (startingBid <= 0) {
       throw new Error('Starting for Bid must be  positive');
     }
 
     if (!user) {
       throw new Error('User not found');
     }
+
+    // Validate start_date and end_date
+    const startDate = createAuctionDto.start_date
+      ? new Date(createAuctionDto.start_date)
+      : new Date();
+    const endDate = createAuctionDto.end_date
+      ? new Date(createAuctionDto.end_date)
+      : new Date();
+    if (startDate >= endDate) {
+      throw new Error('Start date must be before end date');
+    }
+    if (endDate <= new Date()) {
+      throw new Error('End date must be in the future');
+    }
+    // Set initial status based on date conditions
+    const status =
+      new Date() >= startDate && new Date() < endDate
+        ? AuctionStatus.ACTIVE
+        : AuctionStatus.PENDING;
 
     const auction = this.auctionRepository.create({
       name: createAuctionDto.name,
@@ -83,21 +111,22 @@ export class AuctionsService {
       price: createAuctionDto.price,
       highest_bid: startingBid,
       images: createAuctionDto.images,
-      start_date: createAuctionDto.start_date
-        ? new Date(createAuctionDto.start_date)
-        : new Date(),
-      end_date: createAuctionDto.end_date
-        ? new Date(createAuctionDto.end_date)
-        : new Date(),
+      start_date: startDate,
+      end_date: endDate,
       starting_bid: startingBid, // Set starting_bid to 0 if it's null or undefined
       specifications: createAuctionDto.specifications,
       slug: uniqueSlug, // Use the unique slug
       user: user,
+      status,
     });
+    const newAuction = await this.auctionRepository.save(auction);
 
+    await this.auctionTasksActiveService.scheduleNextAuctionTask();
+    await this.auctionTasksService.scheduleNextAuctionTask();
     // Save the auction and return it
-    return this.auctionRepository.save(auction);
+    return newAuction;
   }
+
   async getAuctionsByCategory(
     categoryId: number,
     page: number,
@@ -196,9 +225,13 @@ export class AuctionsService {
 
     // Cập nhật các trường dữ liệu còn lại từ DTO
     Object.assign(auction, updateAuctionDto);
+    const updatedAuction = await this.auctionRepository.save(auction);
+
+    await this.auctionTasksActiveService.scheduleNextAuctionTask();
+    await this.auctionTasksService.scheduleNextAuctionTask();
 
     // Lưu lại và trả về phiên đấu giá đã cập nhật
-    return this.auctionRepository.save(auction);
+    return updatedAuction;
   }
   async updateHighestBid(slug: string, highest_bid: number): Promise<Auction> {
     // Find the auction by slug

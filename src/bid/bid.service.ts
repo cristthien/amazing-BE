@@ -104,4 +104,18 @@ export class BidService {
 
     return paginatedResult;
   }
+  async getHighestBid(slug: string) {
+    // Get the highest bid for the auction and include the User entity in the result
+    const highestBid = await this.bidsRepository
+      .createQueryBuilder('bid')
+      .leftJoinAndSelect('bid.user', 'user') // Join with the user entity
+      .where('bid.auctionSlug = :slug', { slug })
+      .orderBy('bid.amount', 'DESC')
+      .getOne();
+
+    // Return only the amount and userId if a bid exists, otherwise null
+    return highestBid
+      ? { amount: highestBid.amount, userId: highestBid.user.id }
+      : null;
+  }
 }
