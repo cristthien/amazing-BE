@@ -254,7 +254,7 @@ export class AuctionsService {
     const auction = await this.auctionRepository
       .createQueryBuilder('auction')
       .leftJoinAndSelect('auction.user', 'user') // Assuming `auction` has a relation named `user`
-      .select(['auction.highest_bid', 'user.id'])
+      .select(['auction.highest_bid', 'auction.status', 'user.id'])
       .where('auction.slug = :slug', { slug })
       .getOne();
 
@@ -265,7 +265,8 @@ export class AuctionsService {
     // Return the highest bid along with user id
     return {
       highest_bid: auction.highest_bid,
-      user_id: auction.user ? auction.user.id : null, // Check if user exists
+      user_id: auction.user ? auction.user.id : null,
+      status: auction.status, // Check if user exists
     };
   }
   remove(id: number) {
