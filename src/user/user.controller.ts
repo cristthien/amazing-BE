@@ -7,6 +7,9 @@ import {
   UseGuards,
   Body,
   Put,
+  Patch,
+  Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from './entities/user.entity';
@@ -15,6 +18,7 @@ import { JwtAuthGuard } from '../auth/passport/jwt-auth.guard';
 import { RolesGuard } from '../auth/passport/roles.guard';
 import { Roles } from '../common/decorator/roles.decorator';
 import UpdateUserDto from './dto/update-user.dto';
+import { UserRole } from '../common/enums';
 
 @Controller('users')
 export class UserController {
@@ -42,11 +46,20 @@ export class UserController {
 
   // Update a user by ID
   @Put(':id')
+  @Roles('user')
   async update(
-    @Param('id') id: number,
+    @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<User> {
-    return await this.userService.update(id, updateUserDto);
+    @Request() req: any,
+  ) {
+    const { user } = req;
+    if (id !== `${user.id}` && user.role !== UserRole.Admin) {
+      throw new BadRequestException(
+        'You do not have permission to access this resource',
+      );
+    }
+    console.log(updateUserDto);
+    return await this.userService.update(Number(id), updateUserDto);
   }
 
   // Delete a user by ID

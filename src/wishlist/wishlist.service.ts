@@ -11,6 +11,7 @@ import { Wishlist } from './entities/wishlist.entity';
 import { AuctionsService } from '@/src/auctions/auctions.service';
 import UserPayload from '@/src/common/dto/user-payload.dto';
 import { paginate } from '../common/helpers/pagination.util';
+import { AuctionStatus } from '../common/enums';
 
 @Injectable()
 export class WishlistService {
@@ -26,6 +27,9 @@ export class WishlistService {
     const auction = await this.auctionService.findOnlyAuction(auctionSlug);
     if (!auction) {
       throw new NotFoundException('Auction not found');
+    }
+    if (auction.status == AuctionStatus.CLOSED) {
+      throw new BadRequestException('Auction is closed');
     }
 
     // Check if the wishlist entry already exists for this user and auction

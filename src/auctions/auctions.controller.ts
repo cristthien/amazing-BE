@@ -10,6 +10,7 @@ import {
   Query,
   Patch,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuctionsService } from './auctions.service';
 import { AuctionCreateDto } from './dto/create-auction.dto';
@@ -19,6 +20,7 @@ import { Roles } from '../common/decorator/roles.decorator';
 import { Public } from '../common/decorator/customize';
 import { Auction } from './entities/auction.entity';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
+import { UserRole } from '../common/enums';
 
 @Controller('auctions')
 export class AuctionsController {
@@ -42,6 +44,27 @@ export class AuctionsController {
     // Gọi service để tạo auction mới và lưu vào cơ sở dữ liệu
     return this.auctionsService.createAuction(createAuctionDto);
   }
+  @Get('user/:id')
+  @Roles('user')
+  async getAuctionsByUserID(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Query('page') page = 1, // Default to page 1
+    @Query('limit') limit = 10, // Default to 10 items per page
+  ) {
+    const { user } = req;
+
+    // Permission check: Only allow the user to fetch their own auctions or if they are an Admin
+    if (id !== `${user.id}` && user.role !== UserRole.Admin) {
+      throw new BadRequestException(
+        'You do not have permission to access this resource',
+      );
+    }
+
+    // Fetch the auctions by the user ID with pagination
+    return this.auctionsService.getAllAuctionsByUserID(id, user, +page, +limit);
+  }
+
   @Get()
   @Public()
   async getAllAuctions(

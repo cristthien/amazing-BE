@@ -12,9 +12,11 @@ import { Repository } from 'typeorm';
 import UserPayload from '../common/dto/user-payload.dto';
 import { AuctionsService } from '../auctions/auctions.service';
 import { paginate } from '../common/helpers/pagination.util';
+import { AuctionStatus } from '../common/enums';
 
 @Injectable()
 export class BidService {
+  private isLocked: boolean = false; // Biến khóa
   constructor(
     @InjectRepository(Bid)
     private bidsRepository: Repository<Bid>,
@@ -23,41 +25,50 @@ export class BidService {
   ) {}
   // Create a new bid
   async createBid(createBidDto: CreateBidDto, user: UserPayload) {
-    const { auctionSlug, amount } = createBidDto;
-
-    // Validate user existence
-    const userFromDB = await this.userService.findOne(user.id);
-    if (!userFromDB) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Validate auction existence and get the highest bid details
-    const auction = await this.auctionService.getHighestAuction(auctionSlug);
-    if (!auction) {
-      throw new NotFoundException('Auction not found');
-    }
-
-    const { user_id, highest_bid } = auction;
-    if (userFromDB.id === user_id) {
-      throw new BadRequestException(
-        'You cannot bid on an auction you created.',
+    if (this.isLocked) {
+      throw new Error(
+        'Another bid is being processed. Please try again later.',
       );
     }
-
-    if (amount <= highest_bid) {
-      throw new BadRequestException(
-        'The bid amount must be higher than the current highest bid.',
-      );
-    }
-
-    // Create and save the bid
-    const bid = this.bidsRepository.create({
-      amount,
-      user: userFromDB,
-      auctionSlug,
-    });
-
+    this.isLocked = true; // Khóa lại trước khi xử lý
     try {
+      const { auctionSlug, amount } = createBidDto;
+
+      // Validate user existence
+      const userFromDB = await this.userService.findOne(user.id);
+      if (!userFromDB) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Validate auction existence and get the highest bid details
+      const auction = await this.auctionService.getHighestAuction(auctionSlug);
+      if (!auction) {
+        throw new NotFoundException('Auction not found');
+      }
+
+      const { user_id, highest_bid, status } = auction;
+      if (status == AuctionStatus.CLOSED) {
+        throw new BadRequestException('Auction is closed');
+      }
+      if (userFromDB.id === user_id) {
+        throw new BadRequestException(
+          'You cannot bid on an auction you created.',
+        );
+      }
+
+      if (amount <= highest_bid) {
+        throw new BadRequestException(
+          'The bid amount must be higher than the current highest bid.',
+        );
+      }
+
+      // Create and save the bid
+      const bid = this.bidsRepository.create({
+        amount,
+        user: userFromDB,
+        auctionSlug,
+      });
+
       await this.auctionService.updateHighestBid(auctionSlug, amount);
       const savedBid = await this.bidsRepository.save(bid);
 
@@ -72,6 +83,8 @@ export class BidService {
     } catch (error) {
       console.error('Error saving bid:', error);
       throw new Error('Failed to save bid to the database.');
+    } finally {
+      this.isLocked = false; // Mở khóa sau khi xử lý
     }
   }
 
