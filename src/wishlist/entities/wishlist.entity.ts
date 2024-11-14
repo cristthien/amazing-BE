@@ -17,6 +17,6 @@ export class Wishlist {
   user_id: string;
 
   @ManyToOne(() => Auction, (auction) => auction.id)
-  @JoinColumn({ name: 'auctionId' })
+  @JoinColumn({ name: 'auction' })
   auction: Auction; // Liên kết đến Auction entity
 }

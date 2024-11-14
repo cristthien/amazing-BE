@@ -13,10 +13,11 @@ import { AuctionTasksActiveService } from './tasks/auction-tasks-active.service'
 import { InvoiceModule } from '../invoice/invoice.module';
 import { Bid } from '../bid/entities/bid.entity';
 import { AuctionCronService } from './tasks/cron-task.service';
+import { Wishlist } from '../wishlist/entities/wishlist.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Auction, Category, User, Bid]),
+    TypeOrmModule.forFeature([Auction, Category, User, Bid, Wishlist]),
     UserModule,
     InvoiceModule,
   ], // Đăng ký các entity với TypeOrmModule
