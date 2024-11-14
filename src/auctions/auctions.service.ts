@@ -272,4 +272,21 @@ export class AuctionsService {
   remove(id: number) {
     return `This action removes a #${id} auction`;
   }
+  async getAllAuctionsByUserID(
+    id: string,
+    user: UserPayload,
+    page: number,
+    limit: number,
+  ) {
+    // Use a query builder to flter auctions based on user ID
+    const queryBuilder = this.auctionRepository
+      .createQueryBuilder('auction')
+      .leftJoinAndSelect('auction.user', 'user')
+      .where('auction.userId = :userId', { userId: id });
+
+    // Apply pagination using a helper function (if you have one)
+    const paginatedResult = await paginate<Auction>(page, limit, queryBuilder);
+
+    return paginatedResult;
+  }
 }
