@@ -20,6 +20,7 @@ import { AuctionsModule } from './auctions/auctions.module';
 import { BidModule } from './bid/bid.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { InvoiceModule } from './invoice/invoice.module';
+import { AuctionWSModule } from './websockets/auction.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { InvoiceModule } from './invoice/invoice.module';
     BidModule,
     WishlistModule,
     InvoiceModule,
+    AuctionWSModule,
   ],
   controllers: [AppController],
   providers: [

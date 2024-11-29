@@ -4,6 +4,7 @@ import { AuctionCreateDto } from './dto/create-auction.dto';
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -41,7 +42,10 @@ export class AuctionsService {
 
   async createAuction(createAuctionDto: AuctionCreateDto): Promise<Auction> {
     // Generate the base slug from the name
-    const baseSlug = slugify(createAuctionDto.name, { lower: true });
+    const baseSlug = slugify(createAuctionDto.name, {
+      lower: true,
+      remove: /[^\w\s-]/g,
+    });
 
     let uniqueSlug = '';
     let existingAuction = null;
@@ -131,27 +135,203 @@ export class AuctionsService {
     categoryId: number,
     page: number,
     limit: number,
-  ): Promise<PaginatedResult<Auction>> {
-    // Create a query builder to filter by category and paginate the results
+  ): Promise<{ category: any; auctions: PaginatedResult<Auction> }> {
+    // Kiểm tra xem category có tồn tại không
+    const category = await this.categoryRepository.findOne({
+      where: { id: categoryId },
+    });
+
+    if (!category) {
+      throw new Error('Category not found');
+    }
+
+    // Truy vấn danh sách auction với các trường cần thiết
     const queryBuilder = this.auctionRepository
       .createQueryBuilder('auction')
-      .where('auction.category_id = :categoryId', { categoryId });
+      .where('auction.category_id = :categoryId', { categoryId })
+      .select([
+        'auction.name',
+        'auction.images',
+        'auction.highest_bid',
+        'auction.status',
+        'auction.slug',
+      ]);
 
-    // Use the paginate utility function to apply pagination
-    return paginate<Auction>(page, limit, queryBuilder);
+    // Sử dụng paginate utility function để phân trang kết quả của auctions
+    const auctions = await paginate<Auction>(page, limit, queryBuilder);
+
+    // Trả về kết quả với thông tin category và danh sách auctions
+    return {
+      category: category,
+      auctions: auctions,
+    };
   }
-  async findAll(
-    page: number,
-    limit: number,
-  ): Promise<PaginatedResult<Auction>> {
+  async searchAuctions(key: string) {
+    try {
+      const searchKey = key.trim().toLowerCase();
+
+      // Tạo query tìm kiếm trên nhiều trường
+      const queryBuilder = this.auctionRepository
+        .createQueryBuilder('auction')
+        .where('LOWER(auction.name) LIKE :key', { key: `%${searchKey}%` })
+        .orWhere('LOWER(auction.description) LIKE :key', {
+          key: `%${searchKey}%`,
+        })
+        .select(['auction.name', 'auction.slug', 'auction.images']); // Chỉ lấy những trường cần thiết
+
+      // Lấy kết quả từ cơ sở dữ liệu
+      const results = await queryBuilder.getMany();
+
+      // Chuyển đổi danh sách kết quả để trả về chỉ một ảnh (phần tử đầu tiên trong `images`)
+      const refinedResults = results.map((auction) => ({
+        name: auction.name,
+        slug: auction.slug,
+        image: auction.images?.[0] || null, // Lấy ảnh đầu tiên hoặc null nếu không có ảnh
+      }));
+
+      return refinedResults;
+    } catch (error) {
+      console.error('Error searching auctions:', error);
+      throw new Error('Failed to search auctions. Please try again later.');
+    }
+  }
+
+  async getAuctionsSuggest(categoryId: number) {
+    try {
+      // Create a query builder for the auction repository
+      const queryBuilder = this.auctionRepository
+        .createQueryBuilder('auction')
+        .select([
+          'auction.name',
+          'auction.highest_bid',
+          'auction.images',
+          'auction.slug',
+          'auction.category_id',
+        ]) // Select specific fields
+        .where('auction.category_id = :categoryId', { categoryId }) // Filter by category
+        .andWhere('auction.status = :status', { status: 'active' }) // Filter by active status
+        .orderBy('RANDOM()') // Randomize the order of results (PostgreSQL)
+        .limit(10); // Limit to 10 results
+
+      // Execute the query to fetch the auctions
+      const auctions = await queryBuilder.getMany();
+      return auctions.map((auction) => ({
+        name: auction.name,
+        highest_bid: auction.highest_bid,
+        image: auction.images[0],
+        slug: auction.slug,
+      })); // Return only the selected fields
+    } catch (error) {
+      console.error('Error in getAuctionsSuggest:', error);
+      throw new InternalServerErrorException('An unexpected error occurred');
+    }
+  }
+
+  async findAll(page: number, limit: number) {
     const queryBuilder = this.auctionRepository.createQueryBuilder('auction');
 
     // Join the category and user relations
     queryBuilder
-      .leftJoinAndSelect('auction.category', 'category') // Join category
-      .leftJoinAndSelect('auction.user', 'user'); // Join user
+      .select([
+        'auction.id', // ID của đấu giá
+        'auction.slug', // ID của đấu giá
+        'auction.name', // Tên đấu giá
+        'auction.highest_bid', // Giá cao nhất
+        'auction.status', // Trạng thái
+        'auction.condition', // Tình trạng sản phẩm
+        'category.name', // Tên danh mục
+        'user.username', // Tên người dùng tạo đấu giá
+      ])
+      .leftJoin('auction.category', 'category') // Tham gia bảng category
+      .leftJoin('auction.user', 'user'); // Tham gia bảng user
+    const paginatedResult = await paginate<any>(page, limit, queryBuilder);
 
-    return paginate<Auction>(page, limit, queryBuilder);
+    const refinedData = paginatedResult.data.map((auction) => ({
+      id: auction.id,
+      slug: auction.slug,
+      name: auction.name,
+      highestBid: auction.highest_bid,
+      status: auction.status,
+      condition: auction.condition,
+      categoryName: auction.category.name, // Tên danh mục
+      username: auction.user.username, // Tên người tạo
+    }));
+
+    return {
+      ...paginatedResult,
+      data: refinedData,
+    };
+  }
+  async getNewListing() {
+    try {
+      // Create a query builder for the auction repository
+      const queryBuilder = this.auctionRepository.createQueryBuilder('auction');
+
+      // Apply filters, sorting, and field selection
+      queryBuilder
+        .select([
+          'auction.name',
+          'auction.highest_bid',
+          'auction.images',
+          'auction.slug',
+        ]) // Select specific fields
+        .where('auction.status = :status', { status: 'active' }) // Filter by active status
+        .orderBy('auction.start_date', 'DESC') // Sort by start_date in ascending order (newest first)
+        .limit(10); // Limit the results to the 10 most recent auctions
+      // Execute the query and return the results
+      const auctions = await queryBuilder.getMany(); // Fetch the auctions
+      console.log(auctions[0]);
+      const formattedAuctions = auctions.map((auction) => ({
+        name: auction.name,
+        highest_bid: auction.highest_bid,
+        image: auction.images ? auction.images[0] : 'No image available', // Handle case where no image exists
+        slug: auction.slug,
+      }));
+
+      return formattedAuctions; // Return the array of auctions
+    } catch (error) {
+      console.error('Error in getNewListing:', error);
+      throw new InternalServerErrorException('An unexpected error occurred');
+    }
+  }
+  async explore() {
+    try {
+      // Create a query builder for the auction repository
+      const queryBuilder = this.auctionRepository.createQueryBuilder('auction');
+
+      // Apply filters and field selection
+      const auctions = await queryBuilder
+        .select([
+          'auction.name',
+          'auction.highest_bid',
+          'auction.images',
+          'auction.slug',
+        ]) // Select specific fields
+        .where('auction.status = :status', { status: 'active' }) // Filter by active status
+        .getMany(); // Fetch all active auctions
+
+      // Inline shuffling using Fisher-Yates Algorithm
+      for (let i = auctions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1)); // Generate random index
+        [auctions[i], auctions[j]] = [auctions[j], auctions[i]]; // Swap elements
+      }
+
+      // Limit the shuffled auctions to 10 items
+      const limitedAuctions = auctions.slice(0, 10);
+
+      // Format the result to ensure proper image handling
+      const formattedAuctions = limitedAuctions.map((auction) => ({
+        name: auction.name,
+        highest_bid: auction.highest_bid,
+        image: auction.images?.[0] || 'No image available', // Handle case where no image exists
+        slug: auction.slug,
+      }));
+
+      return formattedAuctions; // Return the formatted list of random auctions
+    } catch (error) {
+      console.error('Error in explore:', error);
+      throw new InternalServerErrorException('An unexpected error occurred');
+    }
   }
 
   async findOne(slug: string): Promise<Auction> {
@@ -278,15 +458,41 @@ export class AuctionsService {
     page: number,
     limit: number,
   ) {
-    // Use a query builder to flter auctions based on user ID
+    // Use a query builder to filter auctions based on user ID
     const queryBuilder = this.auctionRepository
       .createQueryBuilder('auction')
       .leftJoinAndSelect('auction.user', 'user')
-      .where('auction.userId = :userId', { userId: id });
+      .where('auction.userId = :userId', { userId: id })
+      // Select specific fields for the auction
+      .select([
+        'auction.id', // Select 'id' field
+        'auction.slug', // Select 'slug' field
+        'auction.name', // Select 'name' field
+        'auction.start_date', // Select 'start_date' field
+        'auction.end_date', // Select 'end_date' field
+        'auction.highest_bid', // Select 'highest_bid' field
+        'auction.images', // Select 'images' field
+      ])
+      .orderBy('auction.start_date', 'DESC');
 
-    // Apply pagination using a helper function (if you have one)
+    // Apply pagination using a helper function
     const paginatedResult = await paginate<Auction>(page, limit, queryBuilder);
 
-    return paginatedResult;
+    // Get the data from the paginated result
+    const data = paginatedResult.data;
+
+    // Refine the data by mapping over it
+    const refinedData = data.map((item) => {
+      const image = item.images[0]; // Get the first image
+      delete item.images; // Delete the images array
+      return { image: image, ...item }; // Add the first image as 'image' and spread the other fields
+    });
+    delete paginatedResult.data;
+
+    // Return the refined data correctly
+    return {
+      data: refinedData, // Ensure 'data' is an array of refined auction objects
+      ...paginatedResult, // Optionally include other paginated result data (such as pagination info)
+    };
   }
 }

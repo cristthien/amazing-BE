@@ -1,17 +1,12 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Request,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request } from '@nestjs/common';
 import { BidService } from './bid.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Roles } from '../common/decorator/roles.decorator';
+import { ApiTags } from '@nestjs/swagger';
+import { Public } from '../common/decorator/customize';
 
-@Controller('bid')
+@ApiTags('5 - Bids')
+@Controller('bids')
 export class BidController {
   constructor(private readonly bidService: BidService) {}
 
@@ -24,12 +19,8 @@ export class BidController {
   }
 
   @Get(':slug')
-  findAll(
-    @Param('slug') slug: string,
-    @Query('page') page = 1, // Default to page 1
-    @Query('limit') limit = 10,
-  ) {
-    // Default to 10 items per page) {
-    return this.bidService.findAll(slug, +page, +limit);
+  @Public()
+  findAll(@Param('slug') slug: string) {
+    return this.bidService.findAll(slug);
   }
 }

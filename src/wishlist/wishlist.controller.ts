@@ -11,8 +11,10 @@ import {
 import { WishlistService } from './wishlist.service';
 import { CreateWishlistDto } from './dto/create-wishlist.dto';
 import { Roles } from '@/src/common/decorator/roles.decorator';
+import { ApiTags } from '@nestjs/swagger';
 
-@Controller('wishlist')
+@ApiTags('6 - Wishlists')
+@Controller('wishlists')
 export class WishlistController {
   constructor(private readonly wishlistService: WishlistService) {}
 

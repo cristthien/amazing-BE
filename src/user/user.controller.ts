@@ -7,7 +7,6 @@ import {
   UseGuards,
   Body,
   Put,
-  Patch,
   Request,
   BadRequestException,
 } from '@nestjs/common';
@@ -19,7 +18,9 @@ import { RolesGuard } from '../auth/passport/roles.guard';
 import { Roles } from '../common/decorator/roles.decorator';
 import UpdateUserDto from './dto/update-user.dto';
 import { UserRole } from '../common/enums';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('2 - Users')
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -27,6 +28,10 @@ export class UserController {
   // Get all users
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Retrieve all users',
+    description: 'Get a paginated list of all users. Requires admin access.',
+  })
   @Roles('admin')
   async findAll(@Query() paginationDto: PaginationDto) {
     // Lấy các tham số page và limit từ query string
@@ -38,6 +43,11 @@ export class UserController {
 
   // Get a single user by ID
   @Get(':id')
+  @ApiOperation({
+    summary: 'Retrieve a specific user',
+    description:
+      'Get the details of a single user by their ID. Requires admin access.',
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   async findOne(@Param('id') id: number): Promise<User> {
@@ -47,6 +57,11 @@ export class UserController {
   // Update a user by ID
   @Put(':id')
   @Roles('user')
+  @ApiOperation({
+    summary: 'Update user information',
+    description:
+      'Update user details by ID. Regular users can only update their own information. Admins can update any user.',
+  })
   async update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -64,6 +79,11 @@ export class UserController {
 
   // Delete a user by ID
   @Delete(':id')
+  @ApiOperation({
+    summary: 'Delete a user',
+    description:
+      'Delete a user by their ID. Regular users cannot delete their account, only admins can perform this action.',
+  })
   async remove(@Param('id') id: number): Promise<void> {
     return await this.userService.remove(id);
   }

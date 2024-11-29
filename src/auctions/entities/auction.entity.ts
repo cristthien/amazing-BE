@@ -35,7 +35,7 @@ export class Auction {
   @Column({ type: 'varchar', length: 20, nullable: true })
   condition: string;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   price: number;
 
   @Column({ type: 'timestamp', nullable: true })

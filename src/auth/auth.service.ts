@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { registerDto } from './dto/register.dto';
 import { MailerService } from '@nestjs-modules/mailer';
 import { UserRole } from '../common/enums';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
     private usersService: UserService,
     private jwtService: JwtService,
     private readonly mailerServices: MailerService,
+    private configService: ConfigService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -42,6 +44,7 @@ export class AuthService {
     // Trả về access token
     return {
       access_token: await this.jwtService.signAsync(payload),
+      user: { username: user.username, role: user.role },
     };
   }
   handleRegister = async (registerDto: registerDto, ad = false) => {
@@ -51,7 +54,9 @@ export class AuthService {
     const key = ad
       ? `${user.username}gi@thien${user.password}admin`
       : `${user.username}gi@thien${user.password}`;
+    console.log(key);
     const cipherText = await HashPasswordHelper(key);
+    const apiUrl = this.configService.get<string>('FRONT_URL'); // Dễ dàng truy cập từ .env
 
     this.mailerServices.sendMail({
       to: user.email, // list of receivers
@@ -59,7 +64,7 @@ export class AuthService {
       template: 'register.hbs',
       context: {
         name: user.username,
-        activationLink: `http://localhost:3000/api/v1/auth/validate-email?code=${cipherText}&email=${user.email}`,
+        activationLink: `${apiUrl}/validate-email?code=${cipherText}&email=${user.email}`,
       },
     });
     const newUser = {
@@ -88,6 +93,7 @@ export class AuthService {
         });
         return { message: 'Email successfully verified' };
       }
+      console.log('giathi');
       const isValidAdmin = await ComparePasswordHelper(
         `${user.username}gi@thien${user.password}admin`,
         cipherText,
@@ -101,10 +107,9 @@ export class AuthService {
         return { message: 'Email successfully verified' };
       }
 
-      return { message: 'Fail to validate email' };
-    } catch (error) {
-      console.error('Error during email validation:', error.message);
-      throw new UnauthorizedException('Error validating email or password');
+      throw new UnauthorizedException('Fail to validate email');
+    } catch (error: any) {
+      throw new UnauthorizedException(error.message);
     }
   }
 }

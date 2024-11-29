@@ -42,14 +42,32 @@ export class InvoiceService {
     return this.invoiceRepository.save(invoice);
   }
   async findAll(user: UserPayload, page: number, limit: number) {
-    // Sử dụng QueryBuilder để tạo truy vấn với LEFT JOIN với Auction
     const queryBuilder = this.invoiceRepository
       .createQueryBuilder('invoice')
-      .leftJoinAndSelect('invoice.auction', 'auction') // Left Join với Auction
-      .where('invoice.userID = :userID', { userID: `${user.id}` });
+      .leftJoin('invoice.auction', 'auction') // Left Join với Auction
+      .select([
+        'invoice.id',
+        'invoice.userID',
+        'invoice.amount',
+        'invoice.status',
+        'invoice.paidAt',
+        'invoice.paymentMethod',
+        'invoice.address',
+        'invoice.phoneNumber',
+        'auction.id',
+        'auction.name',
+        'auction.slug',
+        'auction.images',
+        'invoice.createdAt',
+      ])
+      .where('invoice.userID = :userID', { userID: user.id })
+      .orderBy('invoice.createdAt', 'DESC');
+
+    // Phân trang
+    const paginatedResult = await paginate(page, limit, queryBuilder);
 
     // Sử dụng hàm paginate để phân trang kết quả
-    return paginate(page, limit, queryBuilder);
+    return paginatedResult;
   }
 
   async findOne(id: number, user: UserPayload): Promise<Invoice> {
@@ -103,13 +121,25 @@ export class InvoiceService {
   }
   // Phương thức lấy tất cả các hóa đơn cho admin với phân trang
   async findAllbyAdmin(page: number, limit: number) {
-    // Sử dụng query builder để tạo câu truy vấn với LEFT JOIN
+    // Tạo query builder và thực hiện LEFT JOIN với bảng user
     const queryBuilder = this.invoiceRepository
       .createQueryBuilder('invoice')
-      .leftJoinAndSelect('invoice.auction', 'auction') // Left Join với Auction
-      .orderBy('invoice.createdAt', 'DESC'); // Sắp xếp theo ngày tạo của invoice (mới nhất lên đầu)
+      .leftJoin('invoice.auction', 'auction') // Join với bảng auction
+      .select([
+        'invoice.id', // ID
+        'invoice.address', // Địa chỉ
+        'invoice.paymentMethod', // Phương thức thanh toán
+        'invoice.phoneNumber', // Số điện thoại
+        'invoice.userID', // ID người dùng
+        'invoice.amount', // Số tiền
+        'auction.name', // Tên đấu giá
+        'auction.slug', // Tên đấu giá
+        'invoice.createdAt',
+      ])
+      .orderBy('invoice.createdAt', 'DESC'); // Sắp xếp theo ngày tạo
 
-    // Sử dụng hàm paginate để thực hiện phân trang
-    return paginate(page, limit, queryBuilder);
+    // Phân trang và lấy dữ liệu
+    const paginatedResult = await paginate(page, limit, queryBuilder);
+    return paginatedResult;
   }
 }

@@ -1,19 +1,18 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
-  Delete,
   Request,
   Query,
 } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { Roles } from '../common/decorator/roles.decorator';
-
-@Controller('invoice')
+import { ApiTags } from '@nestjs/swagger';
+@ApiTags('7 - Invoices')
+@Controller('invoices')
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 

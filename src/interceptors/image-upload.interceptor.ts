@@ -3,18 +3,17 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { extname } from 'path';
+import * as path from 'path'; // Import 'path' to resolve file paths
+import * as fs from 'fs'; // Import 'fs' to create directories if needed
 
 @Injectable()
 export class ImageUploadInterceptor {
-  // Thêm tham số `fieldName` vào để có thể truyền tên trường
   static upload(fieldName: string) {
     return FileInterceptor(fieldName, {
-      // Giới hạn chỉ tải lên 1 file
       limits: {
         files: 1, // Chỉ cho phép tải lên 1 file
-        fileSize: 10 * 1024 * 1024, // Giới hạn kích thước file (ví dụ: 10MB)
+        fileSize: 10 * 1024 * 1024, // Giới hạn kích thước file (10MB)
       },
-      // Lọc các file ảnh
       fileFilter: (req, file, callback) => {
         const allowedTypes = [
           'image/jpeg',
@@ -32,7 +31,15 @@ export class ImageUploadInterceptor {
         callback(null, true); // Cho phép file ảnh hợp lệ
       },
       storage: diskStorage({
-        destination: './public/images', // Thư mục lưu trữ hình ảnh
+        // Use an absolute path for the destination
+        destination: (req, file, callback) => {
+          const uploadPath = path.resolve(__dirname, '../../public/images'); // Absolute path
+          // Ensure the directory exists, otherwise create it
+          if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+          }
+          callback(null, uploadPath);
+        },
         filename: (req, file, callback) => {
           const fileName = `${uuidv4()}${extname(file.originalname)}`; // Tạo tên file duy nhất
           callback(null, fileName); // Trả về tên file duy nhất
