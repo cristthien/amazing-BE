@@ -10,7 +10,7 @@ import { Repository } from 'typeorm';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { Category } from './entities/category.entity';
-import { paginate } from '../common/helpers/pagination.util';
+
 import { AuctionsService } from '../auctions/auctions.service';
 
 @Injectable()
@@ -49,13 +49,13 @@ export class CategoriesService {
     }
   }
   // Find all categories
-  async findAll(page: number, limit: number) {
+  async findAll() {
     try {
       const queryBuilder =
         this.categoriesRepository.createQueryBuilder('categories');
 
       // Chạy hàm paginate
-      return paginate(+page, +limit, queryBuilder);
+      return queryBuilder.getMany();
     } catch (error) {
       console.error('Error in findAll:', error);
       throw new InternalServerErrorException('An unexpected error occurred');

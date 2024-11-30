@@ -7,3 +7,13 @@ export enum UserRole {
   Admin = 'admin',
   User = 'user',
 }
+export enum AuctionStatus {
+  PENDING = 'pending', // chuẩn bị bắt đầu
+  ACTIVE = 'active', // đang
+  CLOSED = 'closed', // kết thúc
+}
+export enum PaymentMethod {
+  CASH = 'cash',
+  MOMO = 'momo',
+  BANK = 'bank',
+}

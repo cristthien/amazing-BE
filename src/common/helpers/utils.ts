@@ -28,3 +28,24 @@ export const ComparePasswordHelper = async (
     return false; // Handle error based on your strategy
   }
 };
+export function convertTimeLeftToString(ms: number): string {
+  const days = Math.floor(ms / (24 * 3600000));
+  const hours = Math.floor((ms % (24 * 3600000)) / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+
+  let timeString = '';
+
+  if (days > 0) {
+    timeString += `${days} day${days > 1 ? 's' : ''}, `;
+  }
+  if (hours > 0 || days > 0) {
+    timeString += `${hours} hour${hours > 1 ? 's' : ''}, `;
+  }
+  if (minutes > 0 || hours > 0 || days > 0) {
+    timeString += `${minutes} minute${minutes > 1 ? 's' : ''}, `;
+  }
+  timeString += `${seconds} second${seconds > 1 ? 's' : ''}`;
+
+  return timeString;
+}
