@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
+import { convertTimeLeftToString } from '../common/helpers/utils';
 
 @WebSocketGateway(3002, { cors: { origin: '*' } })
 export class AuctionGateway
@@ -17,7 +18,13 @@ export class AuctionGateway
 
   private auctions = new Map<
     string,
-    { highestBid: number; highestBidder: string; createdAt: Date }
+    {
+      highestBid: number;
+      highestBidder: string;
+      createdAt: Date;
+      endDate: Date;
+      client: string[];
+    }
   >();
 
   constructor(
@@ -42,10 +49,34 @@ export class AuctionGateway
 
   handleDisconnect(client: Socket) {
     console.log('User disconnected: ', client.id);
-    // const rooms = Array.from(client.rooms).filter((room) => room !== client.id);
-    console.log(client.rooms);
+
+    // Duyệt qua tất cả các auction để tìm client
+    for (const [slug, auction] of this.auctions.entries()) {
+      // Kiểm tra nếu client tồn tại trong danh sách của auction
+      const clientIndex = auction.client.indexOf(client.id);
+
+      if (clientIndex !== -1) {
+        // Xóa client khỏi danh sách
+        auction.client.splice(clientIndex, 1);
+
+        if (auction.client.length === 0) {
+          // Nếu danh sách client trống, xóa luôn auction
+          this.auctions.delete(slug);
+          console.log(
+            `Auction ${slug} has been deleted as no clients are left.`,
+          );
+        } else {
+          // Nếu còn client khác, chỉ cập nhật danh sách
+          console.log(
+            `Client ${client.id} removed from auction ${slug}. Remaining clients: `,
+            auction.client,
+          );
+        }
+      }
+    }
     console.log(this.auctions);
   }
+
   // Khi người dùng tham gia phòng đấu giá
   @SubscribeMessage('joinAuction')
   async handleJoinAuction(client: Socket, slug: string) {
@@ -59,24 +90,71 @@ export class AuctionGateway
       client.disconnect();
       return;
     }
-    const auction = this.auctions.get(slug);
+    let auction = this.auctions.get(slug);
+    console.log(bidList.end_date);
     // set auction
     if (!auction) {
+      auction = {
+        highestBid: bidList.highest_bid,
+        highestBidder: null,
+        createdAt: null,
+        endDate: bidList.end_date,
+        client: [client.id],
+      };
       if (bidList.numOfBid == 0) {
-        this.auctions.set(slug, {
-          highestBid: bidList.highest_bid,
-          highestBidder: null,
-          createdAt: null,
-        });
+        this.auctions.set(slug, auction);
       } else {
-        this.auctions.set(slug, {
+        auction = {
           highestBid: bidList.highest_bid,
           highestBidder: bidList.bids[0].username,
           createdAt: bidList.bids[0].createdAt,
-        });
+          endDate: bidList.end_date,
+          client: [client.id],
+        };
+        this.auctions.set(slug, auction);
+      }
+      this.handleTimeout(client, slug, auction);
+    } else {
+      const existingAuction = this.auctions.get(slug); // Lấy auction hiện tại
+      if (!existingAuction.client.includes(client.id)) {
+        // Kiểm tra nếu client.id chưa có trong danh sách
+        existingAuction.client.push(client.id); // Thêm client.id
       }
     }
     client.emit('initalizeBid', bidList);
+  }
+  handleTimeout(client: Socket, slug: string, auction: any) {
+    const now = new Date();
+    const timeLeft = auction.endDate.getTime() - now.getTime();
+    if (timeLeft > 3600000) {
+      // set time  out  to handle Count Down
+      const timeoutDuration = timeLeft - 3600000; // Thời gian đến khi còn đúng 1 giờ
+      client.emit('timeleft', {
+        timeleft: convertTimeLeftToString(timeLeft),
+      });
+      setTimeout(() => {
+        this.handleCountDown(slug, 3600000); // Gọi countdown với thời gian còn lại là 1 giờ
+      }, timeoutDuration);
+    } else {
+      this.handleCountDown(slug, timeLeft);
+    }
+  }
+
+  handleCountDown(slug: string, timeLeft: number) {
+    const intervalId = setInterval(() => {
+      timeLeft -= 1000; // Giảm thời gian còn lại mỗi giây
+      if (timeLeft <= 0) {
+        clearInterval(intervalId); // Dừng interval khi hết thời gian
+        console.log(`Auction ${slug} has ended.`);
+        this.server.to(slug).emit('timeleft', {
+          timeleft: 0,
+        });
+      } else {
+        this.server.to(slug).emit('timeleft', {
+          timeleft: convertTimeLeftToString(timeLeft),
+        });
+      }
+    }, 1000); // Cập nhật mỗi giây
   }
 
   // Khi người dùng đặt giá mới

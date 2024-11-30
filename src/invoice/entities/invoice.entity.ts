@@ -13,7 +13,7 @@ export class Invoice {
   @ManyToOne(() => Auction, (auction) => auction.id)
   auction: Auction;
 
-  @Column()
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   amount: number;
 
   @Column()

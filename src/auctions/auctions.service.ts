@@ -135,6 +135,8 @@ export class AuctionsService {
     categoryId: number,
     page: number,
     limit: number,
+    status: string,
+    condition: string,
   ): Promise<{ category: any; auctions: PaginatedResult<Auction> }> {
     // Kiểm tra xem category có tồn tại không
     const category = await this.categoryRepository.findOne({
@@ -156,6 +158,20 @@ export class AuctionsService {
         'auction.status',
         'auction.slug',
       ]);
+    if (status) {
+      const statusArray = status.split(',').map((s) => s.trim()); // Tách chuỗi thành mảng và loại bỏ khoảng trắng
+      queryBuilder.andWhere('auction.status IN (:...statusArray)', {
+        statusArray,
+      });
+    }
+
+    // Xử lý điều kiện của 'condition' (tương tự như status)
+    if (condition) {
+      const conditionArray = condition.split(',').map((c) => c.trim()); // Tách chuỗi thành mảng và loại bỏ khoảng trắng
+      queryBuilder.andWhere('auction.condition IN (:...conditionArray)', {
+        conditionArray,
+      });
+    }
 
     // Sử dụng paginate utility function để phân trang kết quả của auctions
     const auctions = await paginate<Auction>(page, limit, queryBuilder);

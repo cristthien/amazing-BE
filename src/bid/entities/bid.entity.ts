@@ -13,7 +13,7 @@ export class Bid {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false }) // Set nullable to false to enforce non-null constraint
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true }) // Set nullable to false to enforce non-null constraint
   amount: number;
 
   @CreateDateColumn({ type: 'timestamp' })

@@ -112,11 +112,15 @@ export class CategoriesController {
     @Param('id') categoryId: number,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('status') status: string,
+    @Query('condition') condition: string,
   ) {
     return this.auctionsService.getAuctionsByCategory(
       categoryId,
       +page,
       +limit,
+      status,
+      condition,
     );
   }
   @Get(':id/suggest')

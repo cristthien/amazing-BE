@@ -192,6 +192,7 @@ export class BidService {
         highest_bid: auction.highest_bid,
         numOfBid: 0, // Chưa có ai bid
         bids: [], // Danh sách trống
+        end_date: auction.end_date,
       };
     }
 
@@ -214,6 +215,7 @@ export class BidService {
       highest_bid: auction.highest_bid, // Giá cao nhất
       numOfBid: bids.length, // Số lượng người đặt giá
       bids: formattedBids, // Danh sách các bids
+      end_date: auction.end_date,
     };
   }
 }
