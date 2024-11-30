@@ -1,5 +1,5 @@
 services:
-  app:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,7 +10,6 @@ services:
       - ./.env
     depends_on:
       - postgres # Backend chỉ chờ PostgreSQL sẵn sàng
-
   postgres:
     image: postgres:latest
     environment:
@@ -20,7 +19,8 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - amazing-be_postgres_data:/var/lib/postgresql/data
 
 volumes:
-  postgres_data:
+  amazing-be_postgres_data:
+    external: true
