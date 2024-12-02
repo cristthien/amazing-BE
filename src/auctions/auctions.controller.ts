@@ -21,7 +21,7 @@ import { Public } from '../common/decorator/customize';
 import { Auction } from './entities/auction.entity';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UserRole } from '../common/enums';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('4 - Auctions')
 @Controller('auctions')
@@ -30,6 +30,11 @@ export class AuctionsController {
 
   @Post()
   @Roles('user')
+  @ApiOperation({
+    summary: 'Create a new auction',
+    description:
+      'Allows a user to create a new auction. Images can be uploaded and will be added to the auction record.',
+  })
   @UseInterceptors(ImagesUploadInterceptor.upload()) // Sử dụng interceptor cho việc upload ảnh
   async create(
     @Request() req: any,
@@ -48,6 +53,10 @@ export class AuctionsController {
   }
   @Get('search')
   @Public()
+  @ApiOperation({
+    summary: 'Search auctions',
+    description: 'Search auctions by a keyword provided as a query parameter.',
+  })
   async searchProducts(@Query('key') key: string): Promise<any> {
     if (!key || key.trim() === '') {
       return {
@@ -61,6 +70,11 @@ export class AuctionsController {
 
   @Get('user/:id')
   @Roles('user')
+  @ApiOperation({
+    summary: 'Get auctions by user ID',
+    description:
+      'Retrieve all auctions created by a specific user. Users can only retrieve their own auctions unless they are an admin.',
+  })
   async getAuctionsByUserID(
     @Param('id') id: string,
     @Request() req: any,
@@ -84,6 +98,11 @@ export class AuctionsController {
 
   @Get()
   @Public()
+  @ApiOperation({
+    summary: 'Get all auctions',
+    description:
+      'Retrieve a paginated list of all auctions available on the platform.',
+  })
   async getAllAuctions(
     @Query('page') page = 1, // Default to page 1
     @Query('limit') limit = 10, // Default to 10 items per page
@@ -92,22 +111,41 @@ export class AuctionsController {
   }
   @Get('new-listing')
   @Public()
+  @ApiOperation({
+    summary: 'Get new listings',
+    description: 'Retrieve the newest auctions created on the platform.',
+  })
   async newlisting() {
     return this.auctionsService.getNewListing();
   }
   @Get('explore')
   @Public()
+  @ApiOperation({
+    summary: 'Explore auctions',
+    description:
+      'Retrieve a list of featured or popular auctions for users to explore.',
+  })
   async explore() {
     return this.auctionsService.explore();
   }
   @Get(':slug')
   @Public()
+  @ApiOperation({
+    summary: 'Get auction details',
+    description:
+      'Retrieve detailed information about a specific auction by slug.',
+  })
   findOne(@Param('slug') slug: string) {
     return this.auctionsService.findOne(slug);
   }
 
   @Patch(':slug')
   @Roles('user')
+  @ApiOperation({
+    summary: 'Update an auction',
+    description:
+      'Update the details of an auction. Only the creator of the auction can update it. Images can be uploaded and updated as well.',
+  })
   @UseInterceptors(ImagesUploadInterceptor.upload()) // Sử dụng interceptor cho việc upload ảnh
   async update(
     @Param('slug') slug: string, // Sử dụng slug thay vì id
@@ -125,6 +163,11 @@ export class AuctionsController {
 
   @Delete(':id')
   @Roles('admin')
+  @ApiOperation({
+    summary: 'Delete an auction',
+    description:
+      'Delete an auction by its ID. This operation is restricted to admins.',
+  })
   remove(@Param('id') id: string) {
     return this.auctionsService.remove(+id);
   }

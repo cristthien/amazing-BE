@@ -11,7 +11,7 @@ import {
 import { WishlistService } from './wishlist.service';
 import { CreateWishlistDto } from './dto/create-wishlist.dto';
 import { Roles } from '@/src/common/decorator/roles.decorator';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('6 - Wishlists')
 @Controller('wishlists')
@@ -28,15 +28,14 @@ export class WishlistController {
     return this.wishlistService.addToWishlist(createWishlistDto, req.user);
   }
 
-  // // Lấy tất cả wishlist
-  // @Get()
-  // findAll() {
-  //   return this.wishlistService.findAll();
-  // }
-
   // Lấy wishlist theo id
   @Get('')
   @Roles('user')
+  @ApiOperation({
+    summary: 'Add an item to the wishlist',
+    description:
+      'Allows a user to add an item to their wishlist. The item details are provided in the request body.',
+  })
   async findOne(
     @Request() req: any,
     @Query('page') page = 1, // Default to page 1
@@ -58,6 +57,11 @@ export class WishlistController {
   // Xóa wishlist theo id
   @Delete(':id')
   @Roles('user')
+  @ApiOperation({
+    summary: 'Remove an item from the wishlist',
+    description:
+      'Allows a user to remove an item from their wishlist by providing the item ID.',
+  })
   remove(@Param('id') id: number, @Request() req: any) {
     return this.wishlistService.remove(id, req.user); // Chuyển id sang number
   }
