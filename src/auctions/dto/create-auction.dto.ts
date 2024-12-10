@@ -36,6 +36,7 @@ export class AuctionCreateDto {
   start_date: string;
 
   @IsDateString()
+  @IsNotEmpty()
   end_date: string;
 
   @IsNumber()
@@ -45,4 +46,7 @@ export class AuctionCreateDto {
   @IsObject()
   @IsOptional() // Thông số kỹ thuật, optional
   specifications: object;
+
+  @IsNumber()
+  userId: number;
 }

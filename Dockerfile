@@ -13,11 +13,14 @@ RUN npm install
 # Sao chép toàn bộ mã nguồn của dự án vào container
 COPY . .
 
-# Build ứng dụng NestJS (tùy chọn, nếu bạn chỉ cần chạy trực tiếp, có thể bỏ qua dòng này)
+# Nếu bạn chỉ cần chạy trong môi trường phát triển, bỏ qua lệnh build
+# Nếu bạn muốn build ứng dụng, giữ lại dòng này
 RUN npm run build
 
-# Mở cổng cho ứng dụng
+# Mở cổng cho ứng dụng và WebSocket
 EXPOSE 3000
+EXPOSE 3002 
 
-# Lệnh chạy ứng dụng NestJS
+# Lệnh chạy ứng dụng (tùy chỉnh lệnh chạy theo môi trường)
 CMD ["npm", "run", "start:dev"]
+

@@ -1,22 +1,15 @@
 services:
-  app:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
     ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_HOST=postgres  # Use the service name here
-      - DATABASE_PORT=5432
-      - DATABASE_USER=cristthien
-      - DATABASE_PASSWORD=Thien@123
-      - DATABASE_NAME=amazingdb
+      - '3000:3000'
+      - '3002:3002'
+    env_file:
+      - ./.env
     depends_on:
-      - postgres
-
+      - postgres # Backend chỉ chờ PostgreSQL sẵn sàng
   postgres:
     image: postgres:latest
     environment:
@@ -24,9 +17,10 @@ services:
       POSTGRES_PASSWORD: Thien@123
       POSTGRES_DB: amazingdb
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - amazing-be_postgres_data:/var/lib/postgresql/data
 
 volumes:
-  postgres_data:
+  amazing-be_postgres_data:
+    external: true
