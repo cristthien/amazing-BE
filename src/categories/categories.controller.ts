@@ -19,9 +19,16 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 // import { Public } from '../common/decorator/customize';
 import { Roles } from '../common/decorator/roles.decorator';
 import { ImageUploadInterceptor } from '../interceptors/image-upload.interceptor';
-import { ApiConsumes, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ApiMultiFile } from '../interceptors/image-upload-swagger.interceptor';
 import { Public } from '../common/decorator/customize';
+
+@ApiTags('3 - Categories')
 @Controller('categories')
 export class CategoriesController {
   constructor(
@@ -70,16 +77,22 @@ export class CategoriesController {
   }
 
   @Get()
-  @Roles('admin') // Restrict this endpoint to 'admin' role
-  async findAll(
-    @Query('page') page: number = 1, // Default page is 1
-    @Query('limit') limit: number = 10, // Default limit is 10
-  ) {
-    return this.categoriesService.findAll(page, limit);
+  @Public()
+  @ApiOperation({
+    summary: 'Retrieve all categories',
+    description:
+      'Get a list of all categories. This endpoint is publicly accessible.',
+  })
+  async findAll() {
+    return this.categoriesService.findAll();
   }
 
   @Get(':id')
   @Public()
+  @ApiOperation({
+    summary: 'Retrieve category details by ID',
+    description: 'Get detailed information about a category using its ID.',
+  })
   async findOne(@Param('id') id: string) {
     const category = await this.categoriesService.findOne(+id);
     if (!category) {
@@ -89,16 +102,45 @@ export class CategoriesController {
   }
 
   @Get(':id/auctions')
+  @Public()
+  @ApiOperation({
+    summary: 'Retrieve auctions for a specific category',
+    description:
+      'Get a paginated list of auctions belonging to a specific category using its ID.',
+  })
   async getAuctionsByCategory(
     @Param('id') categoryId: number,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('status') status: string,
+    @Query('condition') condition: string,
   ) {
-    return this.auctionsService.getAuctionsByCategory(categoryId, page, limit);
+    return this.auctionsService.getAuctionsByCategory(
+      categoryId,
+      +page,
+      +limit,
+      status,
+      condition,
+    );
+  }
+  @Get(':id/suggest')
+  @Public()
+  @ApiOperation({
+    summary: 'Get suggested auctions for a specific category',
+    description:
+      'Retrieve a list of suggested auctions related to a specific category.',
+  })
+  async getAuctionsSuggest(@Param('id') categoryId: number) {
+    return this.auctionsService.getAuctionsSuggest(categoryId);
   }
 
   @Patch(':id')
   @Roles('admin') // Restrict this endpoint to 'admin' role
+  @ApiOperation({
+    summary: 'Update a category by ID',
+    description:
+      'Update details of an existing category by its ID. Only admins can perform this action. Optionally, you can upload a new thumbnail image.',
+  })
   @UseInterceptors(ImageUploadInterceptor.upload('thumbnail')) // Use interceptor for 'thumbnail' field
   async update(
     @Param('id') id: string, // Get category ID from the route parameter
@@ -125,6 +167,11 @@ export class CategoriesController {
   }
   @Delete(':id')
   @Roles('admin') // Restrict this endpoint to 'admin' role
+  @ApiOperation({
+    summary: 'Delete a category by ID',
+    description:
+      'Delete an existing category using its ID. Only admins can perform this action.',
+  })
   remove(@Param('id') id: string) {
     return this.categoriesService.remove(+id);
   }

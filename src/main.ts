@@ -26,11 +26,28 @@ async function bootstrap() {
       'Bearer',
     )
     .addSecurityRequirements('Bearer')
-    .addTag('0 - Health', 'Endpoints for user accounts')
+    .addTag(
+      '0 - Health',
+      'Endpoints for health checks and resource availability',
+    )
+    .addTag('1 - Authentication', 'Endpoints for managing user authentication')
+    .addTag('2 - Users', 'Endpoints for managing user information')
+    .addTag(
+      '3 - Categories',
+      'Endpoints for retrieving and managing auction categories',
+    )
+    .addTag('4 - Auctions', 'Endpoints for creating and managing auctions')
+    .addTag('5 - Bids', 'Endpoints for placing and managing bids on auctions')
+    .addTag('6 - Wishlists', 'Endpoints for managing user wishlists')
+    .addTag(
+      '7 - Invoices',
+      'Endpoints for handling invoice generation and management',
+    )
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
   app.useGlobalInterceptors(new ResponseInterceptor());
+  app.enableCors();
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

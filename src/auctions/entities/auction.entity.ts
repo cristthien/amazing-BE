@@ -6,7 +6,8 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Category } from '@/src/categories/entities/category.entity';
-
+import { User } from '@/src/user/entities/user.entity';
+import { AuctionStatus } from '@/src/common/enums';
 @Entity('auctions')
 export class Auction {
   @PrimaryGeneratedColumn()
@@ -17,6 +18,9 @@ export class Auction {
 
   @Column({ type: 'text', nullable: true })
   description: string;
+
+  @Column({ type: 'text', nullable: true })
+  slug: string;
 
   @ManyToOne(() => Category, (category) => category.id, { nullable: false }) // Link to Category
   @JoinColumn({ name: 'category_id' }) // Thiết lập cột khóa ngoại
@@ -31,7 +35,7 @@ export class Auction {
   @Column({ type: 'varchar', length: 20, nullable: true })
   condition: string;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   price: number;
 
   @Column({ type: 'timestamp', nullable: true })
@@ -60,4 +64,15 @@ export class Auction {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updated_at: Date;
+
+  @ManyToOne(() => User, (user) => user.id, { nullable: false })
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @Column({
+    type: 'enum',
+    enum: AuctionStatus,
+    default: AuctionStatus.PENDING, // Trạng thái mặc định là 'pending' (chuẩn bị bắt đầu)
+  })
+  status: AuctionStatus; // Trường status sử dụng enum
 }

@@ -19,6 +19,8 @@ import { serveStaticConfig } from './config/serve-static.config';
 import { AuctionsModule } from './auctions/auctions.module';
 import { BidModule } from './bid/bid.module';
 import { WishlistModule } from './wishlist/wishlist.module';
+import { InvoiceModule } from './invoice/invoice.module';
+import { AuctionWSModule } from './websockets/auction.module';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { WishlistModule } from './wishlist/wishlist.module';
     AuctionsModule,
     BidModule,
     WishlistModule,
+    InvoiceModule,
+    AuctionWSModule,
   ],
   controllers: [AppController],
   providers: [

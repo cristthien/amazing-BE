@@ -1,4 +1,3 @@
-import { MailerService } from '@nestjs-modules/mailer';
 import {
   Controller,
   Post,
@@ -18,13 +17,10 @@ import { JwtAuthGuard } from './passport/jwt-auth.guard';
 import { RolesGuard } from './passport/roles.guard';
 import { Roles } from '../common/decorator/roles.decorator';
 import { LoginDto } from './dto/login.dto';
-@ApiTags('Authentication')
+@ApiTags('1 - Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly mailerServices: MailerService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @Public()
@@ -85,7 +81,8 @@ export class AuthController {
   }
 
   @Get('validate-email')
-  @Public() // This is a custom decorator that might bypass guards if needed
+  @ApiOperation({ summary: 'Validate email when register' })
+  @Public() // This is a custom decorator that migt bypass guards if needed
   async validateEmail(
     @Query('code') cipherText: string,
     @Query('email') email: string,

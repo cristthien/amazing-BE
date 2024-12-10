@@ -6,6 +6,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
@@ -34,6 +35,9 @@ export class RolesGuard implements CanActivate {
     }
 
     const userFromDb = await this.UserService.findOne(user.id); // Assuming user.id is available and findOne() gets the user
+    if (!userFromDb) {
+      throw new NotFoundException('User not  in database');
+    }
     const userRole = userFromDb?.role; // Assuming user has a roles field
     // Check if user has one of the required roles
     const hasRole = requiredRoles.some((role) => {
